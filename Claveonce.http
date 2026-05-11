@@ -1,0 +1,6 @@
+@Claveonce_HostAddress = http://localhost:5224
+
+GET {{Claveonce_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
