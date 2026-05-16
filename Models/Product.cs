@@ -1,25 +1,45 @@
 ﻿namespace Claveonce.Models
 {
-    public record Product
+    public class Product
     {
-        public long Id { get; init; }
-        public string Name { get; init; } = string.Empty;
-        public string Description { get; init; } = string.Empty;
-        public double Price { get; init; }
-        public int Stock { get; init; }
+        public Guid Id { get; set; }
+
+        public string Nombre { get; set; } = string.Empty;
+
+        public string Descripcion { get; set; } = string.Empty;
+
+        public decimal Precio { get; set; }
+
+        public int Stock { get; set; }
+
+        public string Categoria { get; set; } = string.Empty;
+
+        public DateTime FechaCreacion { get; set; }
     }
 
-    public record CreateProductRequest(
-        string Name,
-        string Description,
-        double Price,
-        int Stock
-    );
+    public class CreateProductRequest
+    {
+        public string Nombre { get; set; } = string.Empty;
 
-    public record UpdateProductRequest(
-        string Name,
-        string Description,
-        double Price,
-        int Stock
-    );
+        public string Descripcion { get; set; } = string.Empty;
+
+        public decimal Precio { get; set; }
+
+        public int Stock { get; set; }
+
+        public string Categoria { get; set; } = string.Empty;
+    }
+
+    public class UpdateProductRequest
+    {
+        public string Nombre { get; set; } = string.Empty;
+
+        public string Descripcion { get; set; } = string.Empty;
+
+        public decimal Precio { get; set; }
+
+        public int Stock { get; set; }
+
+        public string Categoria { get; set; } = string.Empty;
+    }
 }
