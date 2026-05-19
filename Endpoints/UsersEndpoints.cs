@@ -16,32 +16,30 @@ namespace Claveonce.Endpoints
                     string.IsNullOrWhiteSpace(request.Email) ||
                     string.IsNullOrWhiteSpace(request.Password))
                 {
-                    return Results.BadRequest(new
-                    {
-                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-                        title = "Bad Request",
-                        status = 400,
-                        detail = "La solicitud contiene datos inválidos.",
-                        instance = "/api/users/register",
-                        errorCode = "USR-002",
-                        errorMessage = "Los datos del usuario son inválidos."
-                    });
+                    return Results.BadRequest(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                        "Bad Request",
+                        400,
+                        "La solicitud contiene datos inválidos.",
+                        "/api/users/register",
+                        "USR-002",
+                        "Los datos del usuario son inválidos."
+                    ));
                 }
 
                 var existingUser = users.FirstOrDefault(u => u.Email.ToLower() == request.Email.ToLower());
 
                 if (existingUser != null)
                 {
-                    return Results.Conflict(new
-                    {
-                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.9",
-                        title = "Conflict",
-                        status = 409,
-                        detail = "Ya existe un recurso con esos datos.",
-                        instance = "/api/users/register",
-                        errorCode = "USR-001",
-                        errorMessage = "El email '" + request.Email + "' ya está registrado."
-                    });
+                    return Results.Conflict(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7231#section-6.5.9",
+                        "Conflict",
+                        409,
+                        "Ya existe un usuario con esos datos.",
+                        "/api/users/register",
+                        "USR-001",
+                        "El email '" + request.Email + "' ya está registrado."
+                    ));
                 }
 
                 var user = new User();
@@ -70,44 +68,55 @@ namespace Claveonce.Endpoints
             })
             .WithTags("Users")
             .WithSummary("Registra nuevo usuario")
-            .WithDescription("Registra un nuevo usuario con nombre, apellido, email y password.");
+            .WithDescription("Registra un nuevo usuario en ClaveOnce. Si los datos enviados son inválidos, devuelve un error 400 con el código USR-002. Si el email ya está registrado, devuelve un error 409 con el código USR-001.")
+            .Accepts<RegisterUserRequest>("application/json")
+            .Produces<UserResponse>(StatusCodes.Status201Created)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status409Conflict)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
 
             app.MapPost("/api/users/login", (LoginUserRequest request) =>
             {
                 if (string.IsNullOrWhiteSpace(request.Email) ||
                     string.IsNullOrWhiteSpace(request.Password))
                 {
-                    return Results.BadRequest(new
-                    {
-                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-                        title = "Bad Request",
-                        status = 400,
-                        detail = "La solicitud contiene datos inválidos.",
-                        instance = "/api/users/login",
-                        errorCode = "USR-002",
-                        errorMessage = "Los datos del usuario son inválidos."
-                    });
+                    return Results.BadRequest(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                        "Bad Request",
+                        400,
+                        "La solicitud contiene datos inválidos.",
+                        "/api/users/login",
+                        "USR-002",
+                        "Los datos del usuario son inválidos."
+                    ));
                 }
 
                 var user = users.FirstOrDefault(u => u.Email.ToLower() == request.Email.ToLower());
 
                 if (user == null)
                 {
-                    return Results.Unauthorized();
+                    return Results.Json(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7235#section-3.1",
+                        "Unauthorized",
+                        401,
+                        "Las credenciales no son válidas.",
+                        "/api/users/login",
+                        "USR-003",
+                        "Credenciales incorrectas."
+                    ), statusCode: 401);
                 }
 
                 if (user.Activo == false)
                 {
-                    return Results.Json(new
-                    {
-                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.3",
-                        title = "Forbidden",
-                        status = 403,
-                        detail = "El acceso está prohibido.",
-                        instance = "/api/users/login",
-                        errorCode = "USR-004",
-                        errorMessage = "Su cuenta fue bloqueada por superar el máximo de intentos fallidos. Contacte a soporte."
-                    }, statusCode: 403);
+                    return Results.Json(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7231#section-6.5.3",
+                        "Forbidden",
+                        403,
+                        "El acceso está prohibido.",
+                        "/api/users/login",
+                        "USR-004",
+                        "Su cuenta fue bloqueada por superar el máximo de intentos fallidos. Contacte a soporte."
+                    ), statusCode: 403);
                 }
 
                 if (user.PasswordHash != request.Password)
@@ -118,28 +127,26 @@ namespace Claveonce.Endpoints
                     {
                         user.Activo = false;
 
-                        return Results.Json(new
-                        {
-                            type = "https://tools.ietf.org/html/rfc7231#section-6.5.3",
-                            title = "Forbidden",
-                            status = 403,
-                            detail = "El acceso está prohibido.",
-                            instance = "/api/users/login",
-                            errorCode = "USR-004",
-                            errorMessage = "Su cuenta fue bloqueada por superar el máximo de intentos fallidos. Contacte a soporte."
-                        }, statusCode: 403);
+                        return Results.Json(ErrorResponse.Create(
+                            "https://tools.ietf.org/html/rfc7231#section-6.5.3",
+                            "Forbidden",
+                            403,
+                            "El acceso está prohibido.",
+                            "/api/users/login",
+                            "USR-004",
+                            "Su cuenta fue bloqueada por superar el máximo de intentos fallidos. Contacte a soporte."
+                        ), statusCode: 403);
                     }
 
-                    return Results.Json(new
-                    {
-                        type = "https://tools.ietf.org/html/rfc7235#section-3.1",
-                        title = "Unauthorized",
-                        status = 401,
-                        detail = "Las credenciales no son válidas.",
-                        instance = "/api/users/login",
-                        errorCode = "USR-003",
-                        errorMessage = "Credenciales incorrectas."
-                    }, statusCode: 401);
+                    return Results.Json(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7235#section-3.1",
+                        "Unauthorized",
+                        401,
+                        "Las credenciales no son válidas.",
+                        "/api/users/login",
+                        "USR-003",
+                        "Credenciales incorrectas."
+                    ), statusCode: 401);
                 }
 
                 user.IntentosFallidos = 0;
@@ -155,7 +162,13 @@ namespace Claveonce.Endpoints
             })
             .WithTags("Users")
             .WithSummary("Autentica usuario")
-            .WithDescription("Autentica un usuario mediante email y password.");
+            .WithDescription("Autentica un usuario mediante email y contraseña. Si las credenciales son incorrectas, devuelve un error 401 con el código USR-003. Si el usuario está bloqueado por intentos fallidos, devuelve un error 403 con el código USR-004.")
+            .Accepts<LoginUserRequest>("application/json")
+            .Produces<LoginUserResponse>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status401Unauthorized)
+            .Produces<object>(StatusCodes.Status403Forbidden)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
         }
     }
 }

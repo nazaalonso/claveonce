@@ -10,8 +10,34 @@ namespace Claveonce.Endpoints
             var products = new List<Product>();
 
             // GET ALL
-            app.MapGet("/api/products", (string? categoria, string? nombre) =>
+            app.MapGet("/api/products", (HttpRequest httpRequest, string? categoria, string? nombre) =>
             {
+                if (httpRequest.Query.ContainsKey("categoria") && string.IsNullOrWhiteSpace(categoria))
+                {
+                    return Results.BadRequest(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                        "Bad Request",
+                        400,
+                        "La solicitud contiene datos inválidos.",
+                        "/api/products",
+                        "PRD-002",
+                        "Si se informa la categoría, debe tener un valor."
+                    ));
+                }
+
+                if (httpRequest.Query.ContainsKey("nombre") && string.IsNullOrWhiteSpace(nombre))
+                {
+                    return Results.BadRequest(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                        "Bad Request",
+                        400,
+                        "La solicitud contiene datos inválidos.",
+                        "/api/products",
+                        "PRD-002",
+                        "Si se informa el nombre, debe tener un valor."
+                    ));
+                }
+
                 var productsFiltered = products.AsEnumerable();
 
                 if (!string.IsNullOrWhiteSpace(categoria))
@@ -25,10 +51,13 @@ namespace Claveonce.Endpoints
                 }
 
                 return Results.Ok(productsFiltered);
-            })
-            .WithTags("Products")
-            .WithSummary("Lista productos")
-            .WithDescription("Lista productos. Permite filtrar por categoria y nombre.");
+                        })
+             .WithTags("Products")
+             .WithSummary("Lista productos")
+             .WithDescription("Lista productos. Permite filtrar por categoría y nombre.")
+             .Produces<IEnumerable<Product>>(StatusCodes.Status200OK)
+             .Produces<object>(StatusCodes.Status400BadRequest)
+             .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // GET BY ID
             app.MapGet("/api/products/{id}", (Guid id) =>
@@ -52,7 +81,10 @@ namespace Claveonce.Endpoints
             })
             .WithTags("Products")
             .WithSummary("Obtiene producto por ID")
-            .WithDescription("Obtiene un producto específico utilizando su identificador.");
+            .WithDescription("Obtiene un producto específico utilizando su identificador. Si el producto no existe, devuelve un error 404 con el código PRD-001.")
+            .Produces<Product>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status404NotFound)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // POST
             app.MapPost("/api/products", (CreateProductRequest request) =>
@@ -104,9 +136,14 @@ namespace Claveonce.Endpoints
 
                 return Results.Created("/api/products/" + product.Id, product);
             })
-            .WithTags("Products")
-            .WithSummary("Crea nuevo producto")
-            .WithDescription("Crea un nuevo producto con nombre, descripción, precio, stock y categoría.");
+                .WithTags("Products")
+                .WithSummary("Crea nuevo producto")
+                .WithDescription("Crea un nuevo producto con nombre, descripción, precio, stock y categoría. Puede devolver PRD-002 si los datos son inválidos o PRD-003 si el producto ya existe.")
+                .Accepts<CreateProductRequest>("application/json")
+                .Produces<Product>(StatusCodes.Status201Created)
+                .Produces<object>(StatusCodes.Status400BadRequest)
+                .Produces<object>(StatusCodes.Status409Conflict)
+                .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // PUT
             app.MapPut("/api/products/{id}", (Guid id, UpdateProductRequest request) =>
@@ -152,9 +189,13 @@ namespace Claveonce.Endpoints
             })
             .WithTags("Products")
             .WithSummary("Actualiza producto existente")
-            .WithDescription("Actualiza los datos de un producto existente.");
-
-            // DELETE
+            .WithDescription("Actualiza los datos de un producto existente. Puede devolver PRD-001 si el producto no existe o PRD-002 si los datos son inválidos.")
+            .Accepts<UpdateProductRequest>("application/json")
+            .Produces<Product>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status404NotFound)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
+                        // DELETE
             app.MapDelete("/api/products/{id}", (Guid id) =>
             {
                 var product = products.FirstOrDefault(p => p.Id == id);
@@ -176,9 +217,10 @@ namespace Claveonce.Endpoints
 
                 return Results.NoContent();
             })
-            .WithTags("Products")
-            .WithSummary("Elimina producto")
-            .WithDescription("Elimina un producto existente utilizando su identificador.");
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces<object>(StatusCodes.Status404NotFound)
+            .Produces<object>(StatusCodes.Status409Conflict)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
         }
     }
 }
