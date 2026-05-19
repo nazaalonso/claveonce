@@ -31,7 +31,10 @@ namespace Claveonce.Endpoints
             })
             .WithTags("Cart")
             .WithSummary("Obtiene carrito del usuario")
-            .WithDescription("Obtiene el carrito activo de un usuario.");
+            .WithDescription("Obtiene el carrito activo de un usuario. Si el usuario no tiene carrito activo, devuelve un error 404 con el código CRT-001.")
+            .Produces<Cart>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status404NotFound)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
 
             app.MapPost("/api/cart/{userId}/items", (Guid userId, AddCartItemRequest request) =>
             {
@@ -82,7 +85,13 @@ namespace Claveonce.Endpoints
             })
             .WithTags("Cart")
             .WithSummary("Agrega producto al carrito")
-            .WithDescription("Agrega un producto al carrito del usuario.");
+            .WithDescription("Agrega un producto al carrito del usuario. Si la cantidad es inválida, devuelve un error 400 con el código CRT-004.")
+            .Accepts<AddCartItemRequest>("application/json")
+            .Produces<Cart>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status404NotFound)
+            .Produces<object>(StatusCodes.Status422UnprocessableEntity)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
 
             app.MapPut("/api/cart/{userId}/items/{productId}", (Guid userId, Guid productId, UpdateCartItemRequest request) =>
             {
@@ -93,10 +102,10 @@ namespace Claveonce.Endpoints
                         type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
                         title = "Bad Request",
                         status = 400,
-                        detail = "La solicitud contiene datos inválidos.",
+                        detail = "La cantidad debe ser mayor a cero.",
                         instance = "/api/cart/" + userId + "/items/" + productId,
                         errorCode = "CRT-004",
-                        errorMessage = "Cantidad inválida."
+                        errorMessage = "La cantidad debe ser mayor a cero."
                     });
                 }
 
@@ -109,7 +118,7 @@ namespace Claveonce.Endpoints
                         type = "https://tools.ietf.org/html/rfc7231#section-6.5.4",
                         title = "Not Found",
                         status = 404,
-                        detail = "El recurso solicitado no fue encontrado.",
+                        detail = "No se encontró un carrito activo para el usuario indicado.",
                         instance = "/api/cart/" + userId,
                         errorCode = "CRT-001",
                         errorMessage = "Carrito no encontrado."
@@ -125,7 +134,7 @@ namespace Claveonce.Endpoints
                         type = "https://tools.ietf.org/html/rfc7231#section-6.5.4",
                         title = "Not Found",
                         status = 404,
-                        detail = "El recurso solicitado no fue encontrado.",
+                        detail = "El carrito existe, pero no contiene el producto indicado.",
                         instance = "/api/cart/" + userId + "/items/" + productId,
                         errorCode = "CRT-002",
                         errorMessage = "Producto no encontrado."
@@ -138,8 +147,14 @@ namespace Claveonce.Endpoints
                 return Results.Ok(cart);
             })
             .WithTags("Cart")
-            .WithSummary("Actualiza cantidad de un item")
-            .WithDescription("Actualiza la cantidad de un producto dentro del carrito.");
+            .WithSummary("Actualiza cantidad de un producto")
+            .WithDescription("Actualiza la cantidad de un producto dentro del carrito. Si la cantidad es inválida, devuelve un error 400 con el código CRT-004. Si el carrito o el producto no existen, devuelve un error 404.")
+            .Accepts<UpdateCartItemRequest>("application/json")
+            .Produces<Cart>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status404NotFound)
+            .Produces<object>(StatusCodes.Status422UnprocessableEntity)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
 
             app.MapDelete("/api/cart/{userId}/items/{productId}", (Guid userId, Guid productId) =>
             {
@@ -152,7 +167,7 @@ namespace Claveonce.Endpoints
                         type = "https://tools.ietf.org/html/rfc7231#section-6.5.4",
                         title = "Not Found",
                         status = 404,
-                        detail = "El recurso solicitado no fue encontrado.",
+                        detail = "No se encontró un carrito activo para el usuario indicado.",
                         instance = "/api/cart/" + userId,
                         errorCode = "CRT-001",
                         errorMessage = "Carrito no encontrado."
@@ -168,7 +183,7 @@ namespace Claveonce.Endpoints
                         type = "https://tools.ietf.org/html/rfc7231#section-6.5.4",
                         title = "Not Found",
                         status = 404,
-                        detail = "El recurso solicitado no fue encontrado.",
+                        detail = "El carrito existe, pero no contiene el producto indicado.",
                         instance = "/api/cart/" + userId + "/items/" + productId,
                         errorCode = "CRT-002",
                         errorMessage = "Producto no encontrado."
@@ -182,7 +197,10 @@ namespace Claveonce.Endpoints
             })
             .WithTags("Cart")
             .WithSummary("Quita producto del carrito")
-            .WithDescription("Quita un producto específico del carrito del usuario.");
+            .WithDescription("Quita un producto específico del carrito del usuario. Si el carrito o el producto no existen, devuelve un error 404.")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces<object>(StatusCodes.Status404NotFound)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
 
             app.MapDelete("/api/cart/{userId}", (Guid userId) =>
             {
@@ -195,7 +213,7 @@ namespace Claveonce.Endpoints
                         type = "https://tools.ietf.org/html/rfc7231#section-6.5.4",
                         title = "Not Found",
                         status = 404,
-                        detail = "El recurso solicitado no fue encontrado.",
+                        detail = "No se encontró un carrito activo para el usuario indicado.",
                         instance = "/api/cart/" + userId,
                         errorCode = "CRT-001",
                         errorMessage = "Carrito no encontrado."
@@ -208,7 +226,10 @@ namespace Claveonce.Endpoints
             })
             .WithTags("Cart")
             .WithSummary("Vacía carrito completo")
-            .WithDescription("Elimina el carrito completo de un usuario.");
+            .WithDescription("Elimina el carrito completo de un usuario. Si el carrito no existe, devuelve un error 404 con el código CRT-001.")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces<object>(StatusCodes.Status404NotFound)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
         }
     }
 }

@@ -23,7 +23,9 @@ namespace Claveonce.Endpoints
             })
             .WithTags("Orders")
             .WithSummary("Lista órdenes")
-            .WithDescription("Lista las órdenes generadas. Permite filtrar por usuarioId.");
+            .WithDescription("Lista las órdenes generadas. Permite filtrar las órdenes por usuarioId.")
+            .Produces<IEnumerable<Order>>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // GET BY ID
             app.MapGet("/api/orders/{id}", (Guid id) =>
@@ -32,39 +34,40 @@ namespace Claveonce.Endpoints
 
                 if (order == null)
                 {
-                    return Results.NotFound(new
-                    {
-                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.4",
-                        title = "Not Found",
-                        status = 404,
-                        detail = "El recurso solicitado no fue encontrado.",
-                        instance = "/api/orders/" + id,
-                        errorCode = "ORD-001",
-                        errorMessage = "Orden no encontrada."
-                    });
+                    return Results.NotFound(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7231#section-6.5.4",
+                        "Not Found",
+                        404,
+                        "No se encontró una orden con el identificador indicado.",
+                        "/api/orders/" + id,
+                        "ORD-001",
+                        "Orden no encontrada."
+                    ));
                 }
 
                 return Results.Ok(order);
             })
             .WithTags("Orders")
             .WithSummary("Obtiene detalle de una orden")
-            .WithDescription("Obtiene una orden específica utilizando su identificador.");
+            .WithDescription("Obtiene una orden específica utilizando su identificador. Si la orden no existe, devuelve un error 404 con el código ORD-001.")
+            .Produces<Order>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status404NotFound)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // POST
             app.MapPost("/api/orders", (CreateOrderRequest request) =>
             {
                 if (request.UsuarioId == Guid.Empty || request.Items == null || request.Items.Count == 0)
                 {
-                    return Results.BadRequest(new
-                    {
-                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-                        title = "Bad Request",
-                        status = 400,
-                        detail = "La solicitud contiene datos inválidos.",
-                        instance = "/api/orders",
-                        errorCode = "ORD-002",
-                        errorMessage = "Los datos de la orden son inválidos."
-                    });
+                    return Results.BadRequest(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                        "Bad Request",
+                        400,
+                        "La orden debe tener un usuario válido y al menos un producto.",
+                        "/api/orders",
+                        "ORD-002",
+                        "Los datos de la orden son inválidos."
+                    ));
                 }
 
                 foreach (var itemRequest in request.Items)
@@ -73,16 +76,15 @@ namespace Claveonce.Endpoints
                         itemRequest.Cantidad <= 0 ||
                         itemRequest.PrecioUnitario <= 0)
                     {
-                        return Results.BadRequest(new
-                        {
-                            type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-                            title = "Bad Request",
-                            status = 400,
-                            detail = "La solicitud contiene datos inválidos.",
-                            instance = "/api/orders",
-                            errorCode = "ORD-002",
-                            errorMessage = "Los datos de la orden son inválidos."
-                        });
+                        return Results.BadRequest(ErrorResponse.Create(
+                            "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                            "Bad Request",
+                            400,
+                            "Cada item de la orden debe tener productoId válido, cantidad mayor a cero y precio unitario mayor a cero.",
+                            "/api/orders",
+                            "ORD-002",
+                            "Los datos de la orden son inválidos."
+                        ));
                     }
                 }
 
@@ -112,7 +114,14 @@ namespace Claveonce.Endpoints
             })
             .WithTags("Orders")
             .WithSummary("Crea nueva orden")
-            .WithDescription("Crea una nueva orden con usuarioId e items. Calcula el total según cantidad y precio unitario.");
+            .WithDescription("Crea una nueva orden con usuarioId e items. Calcula el total según cantidad y precio unitario. Si los datos son inválidos, devuelve un error 400 con el código ORD-002.")
+            .Accepts<CreateOrderRequest>("application/json")
+            .Produces<Order>(StatusCodes.Status201Created)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status404NotFound)
+            .Produces<object>(StatusCodes.Status409Conflict)
+            .Produces<object>(StatusCodes.Status422UnprocessableEntity)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // PUT STATUS
             app.MapPut("/api/orders/{id}/status", (Guid id, UpdateOrderStatusRequest request) =>
@@ -121,30 +130,28 @@ namespace Claveonce.Endpoints
 
                 if (order == null)
                 {
-                    return Results.NotFound(new
-                    {
-                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.4",
-                        title = "Not Found",
-                        status = 404,
-                        detail = "El recurso solicitado no fue encontrado.",
-                        instance = "/api/orders/" + id + "/status",
-                        errorCode = "ORD-001",
-                        errorMessage = "Orden no encontrada."
-                    });
+                    return Results.NotFound(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7231#section-6.5.4",
+                        "Not Found",
+                        404,
+                        "No se encontró una orden con el identificador indicado.",
+                        "/api/orders/" + id + "/status",
+                        "ORD-001",
+                        "Orden no encontrada."
+                    ));
                 }
 
                 if (string.IsNullOrWhiteSpace(request.Estado))
                 {
-                    return Results.BadRequest(new
-                    {
-                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-                        title = "Bad Request",
-                        status = 400,
-                        detail = "La solicitud contiene datos inválidos.",
-                        instance = "/api/orders/" + id + "/status",
-                        errorCode = "ORD-002",
-                        errorMessage = "Los datos de la orden son inválidos."
-                    });
+                    return Results.BadRequest(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                        "Bad Request",
+                        400,
+                        "Debe informar el nuevo estado de la orden.",
+                        "/api/orders/" + id + "/status",
+                        "ORD-002",
+                        "Los datos de la orden son inválidos."
+                    ));
                 }
 
                 if (request.Estado != "Pendiente" &&
@@ -153,30 +160,28 @@ namespace Claveonce.Endpoints
                     request.Estado != "Entregada" &&
                     request.Estado != "Cancelada")
                 {
-                    return Results.Conflict(new
-                    {
-                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.9",
-                        title = "Conflict",
-                        status = 409,
-                        detail = "No se puede modificar el estado.",
-                        instance = "/api/orders/" + id + "/status",
-                        errorCode = "ORD-006",
-                        errorMessage = "El estado de la orden no puede ser modificado."
-                    });
+                    return Results.Conflict(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7231#section-6.5.9",
+                        "Conflict",
+                        409,
+                        "El estado informado no es válido para una orden.",
+                        "/api/orders/" + id + "/status",
+                        "ORD-006",
+                        "Los estados permitidos son Pendiente, Confirmada, Enviada, Entregada o Cancelada."
+                    ));
                 }
 
                 if (order.Estado == "Entregada" && request.Estado == "Pendiente")
                 {
-                    return Results.Conflict(new
-                    {
-                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.9",
-                        title = "Conflict",
-                        status = 409,
-                        detail = "No se puede modificar el estado.",
-                        instance = "/api/orders/" + id + "/status",
-                        errorCode = "ORD-006",
-                        errorMessage = "Una orden en estado 'Entregada' no puede volver a 'Pendiente'."
-                    });
+                    return Results.Conflict(ErrorResponse.Create(
+                        "https://tools.ietf.org/html/rfc7231#section-6.5.9",
+                        "Conflict",
+                        409,
+                        "La transición de estado solicitada no está permitida.",
+                        "/api/orders/" + id + "/status",
+                        "ORD-006",
+                        "Una orden en estado 'Entregada' no puede volver a 'Pendiente'."
+                    ));
                 }
 
                 order.Estado = request.Estado;
@@ -192,7 +197,13 @@ namespace Claveonce.Endpoints
             })
             .WithTags("Orders")
             .WithSummary("Actualiza estado de la orden")
-            .WithDescription("Actualiza el estado de una orden. Los estados permitidos son Pendiente, Confirmada, Enviada, Entregada y Cancelada.");
+            .WithDescription("Actualiza el estado de una orden. Los estados permitidos son Pendiente, Confirmada, Enviada, Entregada y Cancelada. Si la orden no existe, devuelve ORD-001. Si el estado no es válido, devuelve ORD-006.")
+            .Accepts<UpdateOrderStatusRequest>("application/json")
+            .Produces<UpdateOrderStatusResponse>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status404NotFound)
+            .Produces<object>(StatusCodes.Status409Conflict)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
         }
     }
 }
