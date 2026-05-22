@@ -3,6 +3,7 @@ using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddExceptionHandler<ClaveOnce.Exceptions.GlobalExceptionHandler>();
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -38,7 +39,7 @@ app.MapGet("/health", () =>
     {
         status = "Healthy",
         service = "ClaveOnce API",
-        message = "La API de ClaveOnce está funcionando correctamente",
+        message = "La API de ClaveOnce estï¿½ funcionando correctamente",
         timestamp = DateTime.UtcNow
     });
 })
@@ -52,13 +53,13 @@ app.MapGet("/health/ready", () =>
     {
         status = "Healthy",
         service = "ClaveOnce API",
-        message = "La API está lista para recibir solicitudes",
+        message = "La API estï¿½ lista para recibir solicitudes",
         timestamp = DateTime.UtcNow
     });
 })
 .WithTags("Health")
-.WithSummary("Verifica si la API está lista")
-.WithDescription("Devuelve el estado de preparación de la API para indicar si puede recibir solicitudes.");
+.WithSummary("Verifica si la API estï¿½ lista")
+.WithDescription("Devuelve el estado de preparaciï¿½n de la API para indicar si puede recibir solicitudes.");
 
 app.MapGet("/health/live", () =>
 {
@@ -66,12 +67,13 @@ app.MapGet("/health/live", () =>
     {
         status = "Healthy",
         service = "ClaveOnce API",
-        message = "La API está activa",
+        message = "La API estï¿½ activa",
         timestamp = DateTime.UtcNow
     });
 })
 .WithTags("Health")
-.WithSummary("Verifica si la API está activa")
-.WithDescription("Devuelve el estado de vida de la API para indicar si la aplicación sigue ejecutándose.");
+.WithSummary("Verifica si la API estï¿½ activa")
+.WithDescription("Devuelve el estado de vida de la API para indicar si la aplicaciï¿½n sigue ejecutï¿½ndose.");
 
+app.UseExceptionHandler();
 app.Run();
