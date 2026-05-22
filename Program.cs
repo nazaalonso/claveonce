@@ -1,9 +1,28 @@
 using Claveonce.Endpoints;
+using MiniApi.Exceptions;
+using Serilog;
 using System.Reflection;
+using Serilog.Formatting.Json;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddExceptionHandler<ClaveOnce.Exceptions.GlobalExceptionHandler>();
+
+// Configuración de Serilog
+builder.Host.UseSerilog((context, configuration) => configuration
+    .WriteTo.Console() // Log en consola
+    .WriteTo.File(new JsonFormatter(), "logs/log.json", rollingInterval: RollingInterval.Day) // Log en archivo JSON
+    .Enrich.FromLogContext());
+
+
+builder.Services.AddExceptionHandler<MiniApi.Exceptions.GlobalExceptionHandler>();   //addExceptionHandler le dice a .Net que delegue el manejo del error a mi clase personalizada
+
+builder.Services.AddProblemDetails(); //es el estandar de .Net para manejar errores de forma estructurada
+
+
+builder.Services.AddHealthChecks(); //Health Checks - Middleware
+
+
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -15,6 +34,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+app.UseExceptionHandler(); // es el middleware que intercepta errores antes de mandarselos al cliente
 
 // Swagger UI
 if (app.Environment.IsDevelopment())
@@ -75,5 +96,13 @@ app.MapGet("/health/live", () =>
 .WithSummary("Verifica si la API est� activa")
 .WithDescription("Devuelve el estado de vida de la API para indicar si la aplicaci�n sigue ejecut�ndose.");
 
-app.UseExceptionHandler();
+app.UseExceptionHandler(); //manejo de erores
+
+app.MapHealthChecks("/health");         //definición de rutas del error
+app.MapHealthChecks("/health/ready");
+app.MapHealthChecks("/health/live");
+
+app.UseMiddleware<MiniApi.Middleware.CorrelationIdMiddleware>(); //Correlación de ID - Middleware
+
+
 app.Run();

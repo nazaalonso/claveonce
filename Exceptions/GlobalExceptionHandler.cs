@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using ClaveOnce.Exceptions;
+using MiniApi.Exceptions;
 
-namespace ClaveOnce.Exceptions
+namespace MiniApi.Exceptions
 {
     public class GlobalExceptionHandler : IExceptionHandler
     {
