@@ -1,5 +1,6 @@
 ﻿using Claveonce.Models;
 using Claveonce.Helpers;
+using Claveonce.Repositories;
 
 namespace Claveonce.Endpoints
 {
@@ -7,9 +8,7 @@ namespace Claveonce.Endpoints
     {
         public static void MapUsersEndpoints(this WebApplication app)
         {
-            var users = new List<User>();
-
-            app.MapPost("/api/users/register", (RegisterUserRequest request) =>
+            app.MapPost("/api/users/register", (RegisterUserRequest request, UserRepository userRepository) =>
             {
                 if (string.IsNullOrWhiteSpace(request.Nombre) ||
                     string.IsNullOrWhiteSpace(request.Apellido) ||
@@ -27,7 +26,7 @@ namespace Claveonce.Endpoints
                     ));
                 }
 
-                var existingUser = users.FirstOrDefault(u => u.Email.ToLower() == request.Email.ToLower());
+                var existingUser = userRepository.GetByEmail(request.Email);
 
                 if (existingUser != null)
                 {
@@ -53,7 +52,7 @@ namespace Claveonce.Endpoints
                 user.Activo = true;
                 user.IntentosFallidos = 0;
 
-                users.Add(user);
+                userRepository.Create(user);
 
                 var response = new UserResponse();
 
@@ -75,7 +74,7 @@ namespace Claveonce.Endpoints
             .Produces<object>(StatusCodes.Status409Conflict)
             .Produces<object>(StatusCodes.Status500InternalServerError);
 
-            app.MapPost("/api/users/login", (LoginUserRequest request) =>
+            app.MapPost("/api/users/login", (LoginUserRequest request, UserRepository userRepository) =>
             {
                 if (string.IsNullOrWhiteSpace(request.Email) ||
                     string.IsNullOrWhiteSpace(request.Password))
@@ -91,7 +90,7 @@ namespace Claveonce.Endpoints
                     ));
                 }
 
-                var user = users.FirstOrDefault(u => u.Email.ToLower() == request.Email.ToLower());
+                var user = userRepository.GetByEmail(request.Email);
 
                 if (user == null)
                 {
@@ -126,6 +125,7 @@ namespace Claveonce.Endpoints
                     if (user.IntentosFallidos >= 3)
                     {
                         user.Activo = false;
+                        userRepository.UpdateLoginState(user);
 
                         return Results.Json(ErrorResponse.Create(
                             "https://tools.ietf.org/html/rfc7231#section-6.5.3",
@@ -137,6 +137,8 @@ namespace Claveonce.Endpoints
                             "Su cuenta fue bloqueada por superar el máximo de intentos fallidos. Contacte a soporte."
                         ), statusCode: 403);
                     }
+
+                    userRepository.UpdateLoginState(user);
 
                     return Results.Json(ErrorResponse.Create(
                         "https://tools.ietf.org/html/rfc7235#section-3.1",
@@ -150,6 +152,7 @@ namespace Claveonce.Endpoints
                 }
 
                 user.IntentosFallidos = 0;
+                userRepository.UpdateLoginState(user);
 
                 var response = new LoginUserResponse();
 

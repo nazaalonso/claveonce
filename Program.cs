@@ -1,27 +1,29 @@
 using Claveonce.Endpoints;
+using Claveonce.Data;
+using Claveonce.Repositories;
 using MiniApi.Exceptions;
 using Serilog;
 using System.Reflection;
 using Serilog.Formatting.Json;
 
-
 var builder = WebApplication.CreateBuilder(args);
-
 
 // Configuración de Serilog
 builder.Host.UseSerilog((context, configuration) => configuration
-    .WriteTo.Console() // Log en consola
-    .WriteTo.File(new JsonFormatter(), "logs/log.json", rollingInterval: RollingInterval.Day) // Log en archivo JSON
+    .WriteTo.Console()
+    .WriteTo.File(new JsonFormatter(), "logs/log.json", rollingInterval: RollingInterval.Day)
     .Enrich.FromLogContext());
 
+builder.Services.AddExceptionHandler<MiniApi.Exceptions.GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
-builder.Services.AddExceptionHandler<MiniApi.Exceptions.GlobalExceptionHandler>();   //addExceptionHandler le dice a .Net que delegue el manejo del error a mi clase personalizada
+builder.Services.AddHealthChecks();
 
-builder.Services.AddProblemDetails(); //es el estandar de .Net para manejar errores de forma estructurada
+// Base de datos
+builder.Services.AddSingleton<DatabaseInitializer>();
 
-
-builder.Services.AddHealthChecks(); //Health Checks - Middleware
-
+// Repositories
+builder.Services.AddScoped<UserRepository>();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -35,7 +37,14 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-app.UseExceptionHandler(); // es el middleware que intercepta errores antes de mandarselos al cliente
+// Inicialización de la base de datos
+using (var scope = app.Services.CreateScope())
+{
+    var databaseInitializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
+    databaseInitializer.Initialize();
+}
+
+app.UseExceptionHandler();
 
 // Swagger UI
 if (app.Environment.IsDevelopment())
@@ -46,6 +55,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Middleware de correlación
+app.UseMiddleware<MiniApi.Middleware.CorrelationIdMiddleware>();
+
 // Endpoints
 app.MapProductsEndpoints();
 app.MapUsersEndpoints();
@@ -53,14 +65,14 @@ app.MapCartEndpoints();
 app.MapOrdersEndpoints();
 app.MapNotificationsEndpoints();
 
-// Health Checks
-app.MapGet("/health", () =>
+// Health Checks personalizados
+app.MapGet("/health/status", () =>
 {
     return Results.Ok(new
     {
         status = "Healthy",
         service = "ClaveOnce API",
-        message = "La API de ClaveOnce est� funcionando correctamente",
+        message = "La API de ClaveOnce está funcionando correctamente",
         timestamp = DateTime.UtcNow
     });
 })
@@ -68,41 +80,37 @@ app.MapGet("/health", () =>
 .WithSummary("Verifica el estado general de la API")
 .WithDescription("Devuelve el estado general de la API para comprobar que se encuentra operativa.");
 
-app.MapGet("/health/ready", () =>
+app.MapGet("/health/ready-info", () =>
 {
     return Results.Ok(new
     {
         status = "Healthy",
         service = "ClaveOnce API",
-        message = "La API est� lista para recibir solicitudes",
+        message = "La API está lista para recibir solicitudes",
         timestamp = DateTime.UtcNow
     });
 })
 .WithTags("Health")
-.WithSummary("Verifica si la API est� lista")
-.WithDescription("Devuelve el estado de preparaci�n de la API para indicar si puede recibir solicitudes.");
+.WithSummary("Verifica si la API está lista")
+.WithDescription("Devuelve el estado de preparación de la API para indicar si puede recibir solicitudes.");
 
-app.MapGet("/health/live", () =>
+app.MapGet("/health/live-info", () =>
 {
     return Results.Ok(new
     {
         status = "Healthy",
         service = "ClaveOnce API",
-        message = "La API est� activa",
+        message = "La API está activa",
         timestamp = DateTime.UtcNow
     });
 })
 .WithTags("Health")
-.WithSummary("Verifica si la API est� activa")
-.WithDescription("Devuelve el estado de vida de la API para indicar si la aplicaci�n sigue ejecut�ndose.");
+.WithSummary("Verifica si la API está activa")
+.WithDescription("Devuelve el estado de vida de la API para indicar si la aplicación sigue ejecutándose.");
 
-app.UseExceptionHandler(); //manejo de erores
-
-app.MapHealthChecks("/health");         //definición de rutas del error
+// Health Checks reales de .NET
+app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/ready");
 app.MapHealthChecks("/health/live");
-
-app.UseMiddleware<MiniApi.Middleware.CorrelationIdMiddleware>(); //Correlación de ID - Middleware
-
 
 app.Run();
