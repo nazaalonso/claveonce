@@ -34,6 +34,18 @@ namespace Claveonce.Data
             ");
 
             connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS products (
+                    id TEXT PRIMARY KEY,
+                    nombre TEXT NOT NULL,
+                    descripcion TEXT NOT NULL,
+                    precio REAL NOT NULL,
+                    stock INTEGER NOT NULL,
+                    categoria TEXT NOT NULL,
+                    fecha_creacion TEXT NOT NULL
+                );
+            ");
+
+            connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS orders (
                     id TEXT PRIMARY KEY,
                     usuario_id TEXT NOT NULL,

@@ -24,6 +24,7 @@ builder.Services.AddSingleton<DatabaseInitializer>();
 
 // Repositories
 builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<ProductRepository>();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
