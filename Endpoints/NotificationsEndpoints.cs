@@ -1,5 +1,6 @@
 ﻿using Claveonce.Models;
 using Claveonce.Helpers;
+using Claveonce.Repositories;
 
 namespace Claveonce.Endpoints
 {
@@ -7,10 +8,8 @@ namespace Claveonce.Endpoints
     {
         public static void MapNotificationsEndpoints(this WebApplication app)
         {
-            var notifications = new List<Notification>();
-
             // POST SEND
-            app.MapPost("/api/notifications/send", (SendNotificationRequest request) =>
+            app.MapPost("/api/notifications/send", (SendNotificationRequest request, NotificationRepository notificationRepository) =>
             {
                 if (request.UsuarioId == Guid.Empty ||
                     string.IsNullOrWhiteSpace(request.Mensaje) ||
@@ -51,7 +50,7 @@ namespace Claveonce.Endpoints
                 notification.Estado = "Enviada";
                 notification.FechaEnvio = DateTime.UtcNow;
 
-                notifications.Add(notification);
+                notificationRepository.Create(notification);
 
                 return Results.Created("/api/notifications/" + notification.UsuarioId, notification);
             })
@@ -65,11 +64,9 @@ namespace Claveonce.Endpoints
             .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // GET BY USER
-            app.MapGet("/api/notifications/{userId}", (Guid userId) =>
+            app.MapGet("/api/notifications/{userId}", (Guid userId, NotificationRepository notificationRepository) =>
             {
-                var userNotifications = notifications
-                    .Where(n => n.UsuarioId == userId)
-                    .ToList();
+                var userNotifications = notificationRepository.GetByUserId(userId);
 
                 if (userNotifications.Count == 0)
                 {
