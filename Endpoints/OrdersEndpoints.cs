@@ -1,5 +1,6 @@
 ﻿using Claveonce.Models;
 using Claveonce.Helpers;
+using Claveonce.Repositories;
 
 namespace Claveonce.Endpoints
 {
@@ -7,17 +8,10 @@ namespace Claveonce.Endpoints
     {
         public static void MapOrdersEndpoints(this WebApplication app)
         {
-            var orders = new List<Order>();
-
             // GET ALL
-            app.MapGet("/api/orders", (Guid? usuarioId) =>
+            app.MapGet("/api/orders", (Guid? usuarioId, OrderRepository orderRepository) =>
             {
-                var ordersFiltered = orders.AsEnumerable();
-
-                if (usuarioId != null)
-                {
-                    ordersFiltered = ordersFiltered.Where(o => o.UsuarioId == usuarioId);
-                }
+                var ordersFiltered = orderRepository.GetAll(usuarioId);
 
                 return Results.Ok(ordersFiltered);
             })
@@ -28,9 +22,9 @@ namespace Claveonce.Endpoints
             .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // GET BY ID
-            app.MapGet("/api/orders/{id}", (Guid id) =>
+            app.MapGet("/api/orders/{id}", (Guid id, OrderRepository orderRepository) =>
             {
-                var order = orders.FirstOrDefault(o => o.Id == id);
+                var order = orderRepository.GetById(id);
 
                 if (order == null)
                 {
@@ -55,7 +49,7 @@ namespace Claveonce.Endpoints
             .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // POST
-            app.MapPost("/api/orders", (CreateOrderRequest request) =>
+            app.MapPost("/api/orders", (CreateOrderRequest request, OrderRepository orderRepository) =>
             {
                 if (request.UsuarioId == Guid.Empty || request.Items == null || request.Items.Count == 0)
                 {
@@ -108,7 +102,7 @@ namespace Claveonce.Endpoints
 
                 order.Total = order.Items.Sum(i => i.Cantidad * i.PrecioUnitario);
 
-                orders.Add(order);
+                orderRepository.Create(order);
 
                 return Results.Created("/api/orders/" + order.Id, order);
             })
@@ -124,9 +118,9 @@ namespace Claveonce.Endpoints
             .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // PUT STATUS
-            app.MapPut("/api/orders/{id}/status", (Guid id, UpdateOrderStatusRequest request) =>
+            app.MapPut("/api/orders/{id}/status", (Guid id, UpdateOrderStatusRequest request, OrderRepository orderRepository) =>
             {
-                var order = orders.FirstOrDefault(o => o.Id == id);
+                var order = orderRepository.GetById(id);
 
                 if (order == null)
                 {
@@ -187,6 +181,8 @@ namespace Claveonce.Endpoints
                 order.Estado = request.Estado;
                 order.FechaActualizacion = DateTime.UtcNow;
 
+                orderRepository.UpdateStatus(order);
+
                 var response = new UpdateOrderStatusResponse();
 
                 response.Id = order.Id;
@@ -207,4 +203,3 @@ namespace Claveonce.Endpoints
         }
     }
 }
-

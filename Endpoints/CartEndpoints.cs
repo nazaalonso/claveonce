@@ -1,5 +1,5 @@
 ﻿using Claveonce.Models;
-using Claveonce.Helpers;
+using Claveonce.Repositories;
 
 namespace Claveonce.Endpoints
 {
@@ -7,11 +7,9 @@ namespace Claveonce.Endpoints
     {
         public static void MapCartEndpoints(this WebApplication app)
         {
-            var carts = new List<Cart>();
-
-            app.MapGet("/api/cart/{userId}", (Guid userId) =>
+            app.MapGet("/api/cart/{userId}", (Guid userId, CartRepository cartRepository) =>
             {
-                var cart = carts.FirstOrDefault(c => c.UsuarioId == userId);
+                var cart = cartRepository.GetByUserId(userId);
 
                 if (cart == null)
                 {
@@ -36,7 +34,7 @@ namespace Claveonce.Endpoints
             .Produces<object>(StatusCodes.Status404NotFound)
             .Produces<object>(StatusCodes.Status500InternalServerError);
 
-            app.MapPost("/api/cart/{userId}/items", (Guid userId, AddCartItemRequest request) =>
+            app.MapPost("/api/cart/{userId}/items", (Guid userId, AddCartItemRequest request, CartRepository cartRepository) =>
             {
                 if (request.Cantidad <= 0)
                 {
@@ -52,34 +50,9 @@ namespace Claveonce.Endpoints
                     });
                 }
 
-                var cart = carts.FirstOrDefault(c => c.UsuarioId == userId);
+                cartRepository.AddItem(userId, request.ProductoId, request.Cantidad);
 
-                if (cart == null)
-                {
-                    cart = new Cart();
-                    cart.UsuarioId = userId;
-                    cart.FechaActualizacion = DateTime.UtcNow;
-
-                    carts.Add(cart);
-                }
-
-                var item = cart.Items.FirstOrDefault(i => i.ProductoId == request.ProductoId);
-
-                if (item == null)
-                {
-                    var newItem = new CartItem();
-
-                    newItem.ProductoId = request.ProductoId;
-                    newItem.Cantidad = request.Cantidad;
-
-                    cart.Items.Add(newItem);
-                }
-                else
-                {
-                    item.Cantidad = item.Cantidad + request.Cantidad;
-                }
-
-                cart.FechaActualizacion = DateTime.UtcNow;
+                var cart = cartRepository.GetByUserId(userId);
 
                 return Results.Ok(cart);
             })
@@ -93,7 +66,7 @@ namespace Claveonce.Endpoints
             .Produces<object>(StatusCodes.Status422UnprocessableEntity)
             .Produces<object>(StatusCodes.Status500InternalServerError);
 
-            app.MapPut("/api/cart/{userId}/items/{productId}", (Guid userId, Guid productId, UpdateCartItemRequest request) =>
+            app.MapPut("/api/cart/{userId}/items/{productId}", (Guid userId, Guid productId, UpdateCartItemRequest request, CartRepository cartRepository) =>
             {
                 if (request.Cantidad <= 0)
                 {
@@ -109,7 +82,7 @@ namespace Claveonce.Endpoints
                     });
                 }
 
-                var cart = carts.FirstOrDefault(c => c.UsuarioId == userId);
+                var cart = cartRepository.GetByUserId(userId);
 
                 if (cart == null)
                 {
@@ -125,9 +98,7 @@ namespace Claveonce.Endpoints
                     });
                 }
 
-                var item = cart.Items.FirstOrDefault(i => i.ProductoId == productId);
-
-                if (item == null)
+                if (!cartRepository.ItemExists(userId, productId))
                 {
                     return Results.NotFound(new
                     {
@@ -141,8 +112,9 @@ namespace Claveonce.Endpoints
                     });
                 }
 
-                item.Cantidad = request.Cantidad;
-                cart.FechaActualizacion = DateTime.UtcNow;
+                cartRepository.UpdateItem(userId, productId, request.Cantidad);
+
+                cart = cartRepository.GetByUserId(userId);
 
                 return Results.Ok(cart);
             })
@@ -156,9 +128,9 @@ namespace Claveonce.Endpoints
             .Produces<object>(StatusCodes.Status422UnprocessableEntity)
             .Produces<object>(StatusCodes.Status500InternalServerError);
 
-            app.MapDelete("/api/cart/{userId}/items/{productId}", (Guid userId, Guid productId) =>
+            app.MapDelete("/api/cart/{userId}/items/{productId}", (Guid userId, Guid productId, CartRepository cartRepository) =>
             {
-                var cart = carts.FirstOrDefault(c => c.UsuarioId == userId);
+                var cart = cartRepository.GetByUserId(userId);
 
                 if (cart == null)
                 {
@@ -174,9 +146,7 @@ namespace Claveonce.Endpoints
                     });
                 }
 
-                var item = cart.Items.FirstOrDefault(i => i.ProductoId == productId);
-
-                if (item == null)
+                if (!cartRepository.ItemExists(userId, productId))
                 {
                     return Results.NotFound(new
                     {
@@ -190,8 +160,7 @@ namespace Claveonce.Endpoints
                     });
                 }
 
-                cart.Items.Remove(item);
-                cart.FechaActualizacion = DateTime.UtcNow;
+                cartRepository.DeleteItem(userId, productId);
 
                 return Results.NoContent();
             })
@@ -202,9 +171,9 @@ namespace Claveonce.Endpoints
             .Produces<object>(StatusCodes.Status404NotFound)
             .Produces<object>(StatusCodes.Status500InternalServerError);
 
-            app.MapDelete("/api/cart/{userId}", (Guid userId) =>
+            app.MapDelete("/api/cart/{userId}", (Guid userId, CartRepository cartRepository) =>
             {
-                var cart = carts.FirstOrDefault(c => c.UsuarioId == userId);
+                var cart = cartRepository.GetByUserId(userId);
 
                 if (cart == null)
                 {
@@ -220,7 +189,7 @@ namespace Claveonce.Endpoints
                     });
                 }
 
-                carts.Remove(cart);
+                cartRepository.DeleteCart(userId);
 
                 return Results.NoContent();
             })

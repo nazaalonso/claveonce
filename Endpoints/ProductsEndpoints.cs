@@ -1,5 +1,6 @@
 ﻿using Claveonce.Models;
 using Claveonce.Helpers;
+using Claveonce.Repositories;
 
 namespace Claveonce.Endpoints
 {
@@ -7,10 +8,8 @@ namespace Claveonce.Endpoints
     {
         public static void MapProductsEndpoints(this WebApplication app)
         {
-            var products = new List<Product>();
-
             // GET ALL
-            app.MapGet("/api/products", (HttpRequest httpRequest, string? categoria, string? nombre) =>
+            app.MapGet("/api/products", (HttpRequest httpRequest, string? categoria, string? nombre, ProductRepository productRepository) =>
             {
                 if (httpRequest.Query.ContainsKey("categoria") && string.IsNullOrWhiteSpace(categoria))
                 {
@@ -38,31 +37,21 @@ namespace Claveonce.Endpoints
                     ));
                 }
 
-                var productsFiltered = products.AsEnumerable();
-
-                if (!string.IsNullOrWhiteSpace(categoria))
-                {
-                    productsFiltered = productsFiltered.Where(p => p.Categoria.ToLower() == categoria.ToLower());
-                }
-
-                if (!string.IsNullOrWhiteSpace(nombre))
-                {
-                    productsFiltered = productsFiltered.Where(p => p.Nombre.ToLower().Contains(nombre.ToLower()));
-                }
+                var productsFiltered = productRepository.GetAll(categoria, nombre);
 
                 return Results.Ok(productsFiltered);
-                        })
-             .WithTags("Products")
-             .WithSummary("Lista productos")
-             .WithDescription("Lista productos. Permite filtrar por categoría y nombre.")
-             .Produces<IEnumerable<Product>>(StatusCodes.Status200OK)
-             .Produces<object>(StatusCodes.Status400BadRequest)
-             .Produces<object>(StatusCodes.Status500InternalServerError);
+            })
+            .WithTags("Products")
+            .WithSummary("Lista productos")
+            .WithDescription("Lista productos. Permite filtrar por categoría y nombre.")
+            .Produces<IEnumerable<Product>>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // GET BY ID
-            app.MapGet("/api/products/{id}", (Guid id) =>
+            app.MapGet("/api/products/{id}", (Guid id, ProductRepository productRepository) =>
             {
-                var product = products.FirstOrDefault(p => p.Id == id);
+                var product = productRepository.GetById(id);
 
                 if (product == null)
                 {
@@ -87,7 +76,7 @@ namespace Claveonce.Endpoints
             .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // POST
-            app.MapPost("/api/products", (CreateProductRequest request) =>
+            app.MapPost("/api/products", (CreateProductRequest request, ProductRepository productRepository) =>
             {
                 if (string.IsNullOrWhiteSpace(request.Nombre) ||
                     request.Precio <= 0 ||
@@ -105,9 +94,7 @@ namespace Claveonce.Endpoints
                     ));
                 }
 
-                var duplicatedProduct = products.FirstOrDefault(p =>
-                    p.Nombre.ToLower() == request.Nombre.ToLower() &&
-                    p.Categoria.ToLower() == request.Categoria.ToLower());
+                var duplicatedProduct = productRepository.GetByNameAndCategory(request.Nombre, request.Categoria);
 
                 if (duplicatedProduct != null)
                 {
@@ -132,23 +119,23 @@ namespace Claveonce.Endpoints
                 product.Categoria = request.Categoria;
                 product.FechaCreacion = DateTime.UtcNow;
 
-                products.Add(product);
+                productRepository.Create(product);
 
                 return Results.Created("/api/products/" + product.Id, product);
             })
-                .WithTags("Products")
-                .WithSummary("Crea nuevo producto")
-                .WithDescription("Crea un nuevo producto con nombre, descripción, precio, stock y categoría. Puede devolver PRD-002 si los datos son inválidos o PRD-003 si el producto ya existe.")
-                .Accepts<CreateProductRequest>("application/json")
-                .Produces<Product>(StatusCodes.Status201Created)
-                .Produces<object>(StatusCodes.Status400BadRequest)
-                .Produces<object>(StatusCodes.Status409Conflict)
-                .Produces<object>(StatusCodes.Status500InternalServerError);
+            .WithTags("Products")
+            .WithSummary("Crea nuevo producto")
+            .WithDescription("Crea un nuevo producto con nombre, descripción, precio, stock y categoría. Puede devolver PRD-002 si los datos son inválidos o PRD-003 si el producto ya existe.")
+            .Accepts<CreateProductRequest>("application/json")
+            .Produces<Product>(StatusCodes.Status201Created)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status409Conflict)
+            .Produces<object>(StatusCodes.Status500InternalServerError);
 
             // PUT
-            app.MapPut("/api/products/{id}", (Guid id, UpdateProductRequest request) =>
+            app.MapPut("/api/products/{id}", (Guid id, UpdateProductRequest request, ProductRepository productRepository) =>
             {
-                var product = products.FirstOrDefault(p => p.Id == id);
+                var product = productRepository.GetById(id);
 
                 if (product == null)
                 {
@@ -185,6 +172,8 @@ namespace Claveonce.Endpoints
                 product.Stock = request.Stock;
                 product.Categoria = request.Categoria;
 
+                productRepository.Update(product);
+
                 return Results.Ok(product);
             })
             .WithTags("Products")
@@ -195,10 +184,11 @@ namespace Claveonce.Endpoints
             .Produces<object>(StatusCodes.Status400BadRequest)
             .Produces<object>(StatusCodes.Status404NotFound)
             .Produces<object>(StatusCodes.Status500InternalServerError);
-                        // DELETE
-            app.MapDelete("/api/products/{id}", (Guid id) =>
+
+            // DELETE
+            app.MapDelete("/api/products/{id}", (Guid id, ProductRepository productRepository) =>
             {
-                var product = products.FirstOrDefault(p => p.Id == id);
+                var product = productRepository.GetById(id);
 
                 if (product == null)
                 {
@@ -213,10 +203,11 @@ namespace Claveonce.Endpoints
                     ));
                 }
 
-                products.Remove(product);
+                productRepository.Delete(id);
 
                 return Results.NoContent();
             })
+            .WithTags("Products")
             .Produces(StatusCodes.Status204NoContent)
             .Produces<object>(StatusCodes.Status404NotFound)
             .Produces<object>(StatusCodes.Status409Conflict)
