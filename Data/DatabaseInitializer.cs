@@ -46,6 +46,25 @@ namespace Claveonce.Data
             ");
 
             connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS carts (
+                    usuario_id TEXT PRIMARY KEY,
+                    fecha_actualizacion TEXT NOT NULL,
+                    FOREIGN KEY (usuario_id) REFERENCES users(id)
+                );
+            ");
+
+            connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS cart_items (
+                    usuario_id TEXT NOT NULL,
+                    producto_id TEXT NOT NULL,
+                    cantidad INTEGER NOT NULL,
+                    PRIMARY KEY (usuario_id, producto_id),
+                    FOREIGN KEY (usuario_id) REFERENCES carts(usuario_id),
+                    FOREIGN KEY (producto_id) REFERENCES products(id)
+                );
+            ");
+
+            connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS orders (
                     id TEXT PRIMARY KEY,
                     usuario_id TEXT NOT NULL,
@@ -64,7 +83,8 @@ namespace Claveonce.Data
                     product_id TEXT NOT NULL,
                     cantidad INTEGER NOT NULL,
                     precio_unitario REAL NOT NULL,
-                    FOREIGN KEY (order_id) REFERENCES orders(id)
+                    FOREIGN KEY (order_id) REFERENCES orders(id),
+                    FOREIGN KEY (product_id) REFERENCES products(id)
                 );
             ");
 

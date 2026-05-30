@@ -27,6 +27,7 @@ builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<ProductRepository>();
 builder.Services.AddScoped<OrderRepository>();
 builder.Services.AddScoped<NotificationRepository>();
+builder.Services.AddScoped<CartRepository>();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
