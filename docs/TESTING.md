@@ -2,9 +2,9 @@
 
 
 
-\*\*Proyecto:\*\* Arquitectura de Microservicios: E-Commerce  
+\*\*Proyecto:\*\* Arquitectura de Microservicios: E-Commerce
 
-\*\*Fecha de Ejecución:\*\* 3 de junio de 2026  
+\*\*Fecha de Ejecución:\*\* 3 de junio de 2026
 
 
 
@@ -28,6 +28,36 @@ Conclusión técnica: La arquitectura de microservicios se encuentra en un estad
 
 
 
+\---
+
+
+
+\## Verificación de Volumen de Datos Iniciales (Seed Data)
+
+
+
+Para cumplir con las condiciones de evaluación de persistencia y simular un entorno operativo realista, se auditó la precarga de datos en el sistema. El microservicio `Products.API` se inicializó con un catálogo de \*\*20 productos funcionales\*\*.
+
+
+
+Se validó el comportamiento del endpoint mediante una petición de lectura global. La API respondió de manera íntegra, distribuyendo correctamente los identificadores únicos (`Guid`) y respetando las restricciones del Apéndice A (Nombres menor o igual a 100 caracteres y descripciones menor o igual a 500 caracteres).
+
+
+
+\*   \*\*Endpoint Evaluado:\*\* `GET /api/products`
+
+\*   \*\*Código de Estado HTTP:\*\* `200 OK`
+
+\*   \*\*Volumen de Datos:\*\* 20 productos mapeados en el cuerpo de la respuesta.
+
+\*   \*\*Tiempo de Respuesta:\*\* < 45ms
+
+
+
+\*\*Evidencia de Carga:\*\*
+
+!\[Evidencia Carga de Productos](./images/seed_products.png)
+
 
 
 \---
@@ -42,13 +72,13 @@ Conclusión técnica: La arquitectura de microservicios se encuentra en un estad
 
 
 
-Componente / Consigna	
+Componente / Consigna
 
 Sección 3.1 - Estructura del Contrato de Errores Globales
 
 
 
-Pasos para Reproducir	
+Pasos para Reproducir
 
 1\. Levantar el proyecto desde Visual Studio y abrir Swagger.
 
@@ -62,13 +92,13 @@ Pasos para Reproducir
 
 
 
-Resultado Esperado	
+Resultado Esperado
 
 El sistema debe devolver un código de estado HTTP 400 Bad Request. La respuesta JSON debe contener obligatoriamente la estructura del contrato de la cátedra: campos errorCode, errorMessage, status, title, detail, e incluir el campo transversal X-Correlation-Id (Sección 5.5).
 
 
 
-Resultado Obtenido	
+Resultado Obtenido
 
 El sistema devolvió correctamente un código HTTP 400 Bad Request ante un correo inválido/vacío. El JSON de respuesta cumplió de forma estricta con la estructura obligatoria de la cátedra, incluyendo los campos 'errorCode', 'errorMessage' y el transversal 'X-Correlation-Id' generado por el IExceptionHandler
 
@@ -94,13 +124,13 @@ Estado	\[X] PASÓ / \[ ] FALLÓ (BUG)
 
 
 
-Componente / Consigna	
+Componente / Consigna
 
 Sección 4.2 - Regla de Bloqueo por Intentos Fallidos Consecutivos
 
 
 
-Pasos para Reproducir	
+Pasos para Reproducir
 
 1\. En Swagger (Users.API), ir al endpoint POST /api/users/login. Haz clic en Try it out.
 
@@ -114,13 +144,13 @@ Pasos para Reproducir
 
 
 
-Resultado Esperado	
+Resultado Esperado
 
 En los primeros 3 intentos fallidos, el sistema debe responder con un error de credenciales incorrectas. Al 3er intento consecutivo, el campo Activo del usuario debe cambiar a false en la persistencia. En el 4to intento (con los datos correctos), el sistema debe bloquear el acceso y devolver el error específico del catálogo: "usuario bloqueado por intentos fallidos".
 
 
 
-Resultado Obtenido	
+Resultado Obtenido
 
 El sistema detectó correctamente los 3 intentos fallidos consecutivos sobre el usuario. Al tercer intento, modificó el estado de persistencia y bloqueó la cuenta de forma exitosa, devolviendo un código HTTP 403 Forbidden y el mensaje estructurado de bloqueo del catálogo.
 
@@ -146,13 +176,13 @@ Estado	\[X] PASÓ / \[ ] FALLÓ (BUG)
 
 
 
-Componente / Consigna	
+Componente / Consigna
 
 Sección 4.2 y Apéndice A - Seguridad de Datos (Ocultar PasswordHash)
 
 
 
-Pasos para Reproducir	
+Pasos para Reproducir
 
 1\. En Swagger, buscar cualquier endpoint que devuelva información de usuarios (por ejemplo, el resultado de un login exitoso, el registro de un nuevo usuario o un listado de usuarios).
 
@@ -160,13 +190,13 @@ Pasos para Reproducir
 
 
 
-Resultado Esperado	
+Resultado Esperado
 
 Por estrictas directivas de seguridad de la consigna y reglas de negocio del Apéndice A, la respuesta JSON jamás debe exponer o incluir el campo PasswordHash, protegiendo la integridad de la contraseña del usuario.
 
 
 
-Resultado Obtenido	
+Resultado Obtenido
 
 Auditoría de seguridad exitosa. El JSON de respuesta en los endpoints de usuarios no incluye ni expone bajo ningún concepto el campo “PasswordHash”, cumpliendo con las restricciones del Apéndice A y protegiendo la integridad de las credenciales.
 
@@ -194,13 +224,13 @@ Estado	\[X] PASÓ / \[ ] FALLÓ (BUG)
 
 
 
-Componente / Consigna	
+Componente / Consigna
 
 Sección 5.4 - Requerimiento No Funcional: Disponibilidad de Health Checks
 
 
 
-Pasos para Reproducir	
+Pasos para Reproducir
 
 1\. Abrir una nueva pestaña en el navegador.
 
@@ -208,13 +238,13 @@ Pasos para Reproducir
 
 
 
-Resultado Esperado	
+Resultado Esperado
 
 Cada microservicio expuesto debe responder con un código de estado HTTP 200 OK y un formato JSON estructurado que exponga claramente uno de los tres estados oficiales del sistema: Healthy, Degraded o Unhealthy.
 
 
 
-Resultado Obtenido	
+Resultado Obtenido
 
 Los tres endpoints de monitoreo (/health, /health/ready y /health/live) responden de forma exitosa devolviendo un código HTTP 200 OK y el estado oficial 'Healthy', confirmando la correcta disponibilidad y configuración del microservicio de salud exigido por la cátedra.
 
@@ -244,13 +274,13 @@ Estado	\[X] PASÓ / \[ ] FALLÓ (BUG)
 
 
 
-Componente / Consigna	
+Componente / Consigna
 
 Apéndice A - Validación de Negocio: Restricción de Stock de Productos
 
 
 
-Pasos para Reproducir	
+Pasos para Reproducir
 
 1\. En Swagger, buscar el microservicio de productos (Products).
 
@@ -262,13 +292,13 @@ Pasos para Reproducir
 
 
 
-Resultado Esperado	
+Resultado Esperado
 
 El sistema debe rechazar la solicitud devolviendo un código HTTP 400 Bad Request, indicando mediante el IExceptionHandler global que el precio debe ser mayor a 0 y el stock mayor o igual a 0, protegiendo la integridad de los datos de la base de datos.
 
 
 
-Resultado Obtenido	
+Resultado Obtenido
 
 El sistema rechazó la solicitud (HTTP 400 Bad Request) e invocó correctamente el IExceptionHandler global, devolviendo el código estructurado propio 'PRD-002'. El mensaje de error adjunto es el genérico del sistema, pero el contrato de error de la cátedra se cumple formalmente.
 
@@ -294,13 +324,13 @@ Estado	\[X] PASÓ / \[ ] FALLÓ (BUG)
 
 
 
-Componente / Consigna	
+Componente / Consigna
 
 Sección 4.3 - Órdenes API y Manejo de Errores (Código HTTP 404)
 
 
 
-Pasos para Reproducir	
+Pasos para Reproducir
 
 1\. En Swagger, buscar el microservicio de órdenes (Orders).
 
@@ -312,13 +342,13 @@ Pasos para Reproducir
 
 
 
-Resultado Esperado	
+Resultado Esperado
 
 El sistema debe capturar la solicitud inexistente, utilizar el IExceptionHandler global y devolver un código HTTP 404 Not Found. La respuesta de error debe seguir el contrato de la cátedra con su respectivo errorCode y errorMessage.
 
 
 
-Resultado Obtenido	
+Resultado Obtenido
 
 El sistema capturó la solicitud del ID inexistente de forma exitosa (HTTP 404 Not Found) a través del IExceptionHandler global. La respuesta JSON cumplió al 100% con el contrato de la cátedra, devolviendo el código específico 'ORD-001' y el mensaje personalizado “Orden no encontrada.”.
 
@@ -335,6 +365,31 @@ Estado	\[X] PASÓ / \[ ] FALLÓ (BUG)
 
 
 \---
+
+
+---
+
+## Verificación de Requerimientos No Funcionales: Observabilidad
+
+### Logging Estructurado con Serilog (Sección 5.3)
+
+Se auditó la generación de trazas semánticas mediante la revisión del directorio `/logs` en el microservicio `Products.API`. El sistema cumple con el doble Sink requerido por la cátedra, registrando eventos en la consola de desarrollo y persistiendo un archivo físico en formato JSON estructurado.
+
+Cada bloque de registro captura con precisión el ciclo de vida de las peticiones HTTP realizadas durante la auditoría, incluyendo los metadatos obligatorios para garantizar la trazabilidad del ecosistema:
+*   `Timestamp`: Fecha y hora exacta del evento.
+*   `Level`: Severidad de la traza (Warnings para errores de negocio, Errors para excepciones inesperadas).
+*   `Servicio`: Identificador del microservicio de origen (ej. Products.API).
+*   `Endpoint`: Ruta de la API afectada en la petición.
+*   `Correlation ID`: Código único `X-Correlation-Id` propagado de forma transversal.
+*   `Error Code`: Código de negocio alfanumérico (cuando aplique según el catálogo).
+
+**Evidencias de Logs Estructurados (Archivo en Disco):**
+![Evidencia de Serilog Parte 1](./images/logs_serilog_a.png)
+![Evidencia de Serilog Parte 2](./images/logs_serilog_b.png)
+![Evidencia de Serilog Parte 3](./images/logs_serilog_c.png)
+![Evidencia de Serilog Parte 4](./images/logs_serilog_d.png)
+---
+
 
 
 
@@ -401,8 +456,4 @@ Para resolverlo y garantizar una correcta evaluación y ejecución del software 
 
 
 6\.	Políticas de Seguridad Local: Al inicializar el servidor web, el IDE solicitará confirmación para instalar el certificado de seguridad. Se debe seleccionar SÍ en ambas ventanas flotantes de Windows (Certificado SSL autofirmado de ASP.NET Core). Esto habilitará los túneles seguros locales y redirigirá de forma automática al navegador predeterminado (Microsoft Edge / Chrome) bajo la ruta del orquestador de APIs: /swagger.
-
-
-
-
 
